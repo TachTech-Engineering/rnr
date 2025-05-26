@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "493072699110",
+    "project_id": "tachtechrnr",
+    "storage_bucket": "tachtechrnr.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:493072699110:android:f28ded07cfa0c2ef2fb527",
+        "android_client_info": {
+          "package_name": "com.example.mitre_sales_tool"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMHXzCo7rSccDvROYzFDs0kX4Rw3sC75s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
