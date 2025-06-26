@@ -19,6 +19,24 @@ const FirebaseOptions firebaseOptions = FirebaseOptions(
     measurementId: "G-G4MFR66DE6"
 );
 
+// ==========================================================================
+// Custom Color Swatch for TachTech Orange
+// ==========================================================================
+const MaterialColor tachtechOrange = MaterialColor(
+  0xFFF05B2D,
+  <int, Color>{
+    50: Color(0xFFFDECEA),
+    100: Color(0xFFFACFBE),
+    200: Color(0xFFF7B090),
+    300: Color(0xFFF49162),
+    400: Color(0xFFF27941),
+    500: Color(0xFFF05B2D),
+    600: Color(0xFFEE5428),
+    700: Color(0xFFEC4B22),
+    800: Color(0xFFEA421C),
+    900: Color(0xFFE63211),
+  },
+);
 
 // ==========================================================================
 // Main Application Entry Point
@@ -31,7 +49,7 @@ void main() async {
 }
 
 // ==========================================================================
-// Root Application Widget
+// Root Application Widget - UPDATED with Dark Theme
 // ==========================================================================
 class MitreApp extends StatelessWidget {
   const MitreApp({Key? key}) : super(key: key);
@@ -39,33 +57,36 @@ class MitreApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => RiskMitigationState(),
+      create: (context) => RiskRemediationState(),
       child: MaterialApp(
-        title: 'MITRE ATT&CK Risk Mitigation',
-        theme: ThemeData.light().copyWith(
-          scaffoldBackgroundColor: Colors.grey[100],
-          cardColor: Colors.white,
-          primaryColor: Colors.blue[800],
-          appBarTheme: AppBarTheme(
-              backgroundColor: Colors.blue[800],
+        title: 'MITRE ATT&CK Risk Remediation',
+        theme: ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: const Color(0xFF212121),
+          cardColor: const Color(0xFF303030),
+          primaryColor: tachtechOrange,
+          appBarTheme: const AppBarTheme(
+              backgroundColor: tachtechOrange,
               foregroundColor: Colors.white
           ),
           elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[800],
+                backgroundColor: tachtechOrange,
                 foregroundColor: Colors.white,
               )
           ),
           textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(foregroundColor: Colors.blue[800]),
+            style: TextButton.styleFrom(foregroundColor: tachtechOrange),
           ),
-          expansionTileTheme: ExpansionTileThemeData(
-            iconColor: Colors.blue[800],
-            textColor: Colors.blue[800],
+          expansionTileTheme: const ExpansionTileThemeData(
+            iconColor: tachtechOrange,
+            textColor: tachtechOrange,
           ),
           textTheme: const TextTheme(
-            titleLarge: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+            titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            bodyMedium: TextStyle(color: Colors.white70),
           ),
+          dividerColor: Colors.grey[800],
+          colorScheme: ColorScheme.fromSwatch(primarySwatch: tachtechOrange, brightness: Brightness.dark).copyWith(background: const Color(0xFF212121)),
         ),
         home: const HomeScreen(),
         debugShowCheckedModeBanner: false,
@@ -75,7 +96,7 @@ class MitreApp extends StatelessWidget {
 }
 
 // ==========================================================================
-// Data Models - These classes will be populated by the client-side logic
+// Data Models
 // ==========================================================================
 
 /// Represents a top-level Tactic.
@@ -95,7 +116,7 @@ class Technique {
   final String parentTacticId;
   final String? description;
   final String? link;
-  List<SubTechnique> subTechniques; // Made mutable to attach children later
+  List<SubTechnique> subTechniques;
 
   Technique({required this.id, required this.name, required this.parentTacticId, this.description, this.link, this.subTechniques = const []});
 }
@@ -127,7 +148,7 @@ class SubTechnique {
   int get hashCode => id.hashCode;
 }
 
-/// Represents a mitigation Product.
+/// Represents a remediation Product.
 class Product {
   final String id;
   final String name;
@@ -135,16 +156,14 @@ class Product {
 }
 
 // ==========================================================================
-// Firestore Service - UPDATED with correct collection name
+// Firestore Service
 // ==========================================================================
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// NEW: Fetches partially denormalized data and builds the tree structure in the app.
   Future<List<Tactic>> getHierarchicalData() async {
     List<Tactic> finalTactics = [];
     try {
-      // UPDATED: Changed collection name to 'MITRE ATT&CK Framework'
       final tacticsSnapshot = await _db.collection('MITRE ATT&CK Framework').get();
 
       for (final tacticDoc in tacticsSnapshot.docs) {
@@ -154,21 +173,20 @@ class FirestoreService {
         List<Technique> parentTechniques = [];
         List<SubTechnique> subTechniques = [];
 
-        // First pass: separate parents and children
         for (var doc in techniquesSnapshot.docs) {
           final data = doc.data();
           final id = doc.id;
 
-          if (id.contains('.')) { // It's a sub-technique
+          if (id.contains('.')) {
             subTechniques.add(SubTechnique(
               id: id,
               name: data['name'] ?? 'Unnamed Sub-Technique',
               description: data['description'] as String?,
               link: data['link'] as String?,
               parentTacticId: tacticDoc.id,
-              parentTechniqueId: id.split('.').first, // Infer parent ID
+              parentTechniqueId: id.split('.').first,
             ));
-          } else { // It's a parent technique
+          } else {
             parentTechniques.add(Technique(
               id: id,
               name: data['name'] ?? 'Unnamed Technique',
@@ -179,7 +197,6 @@ class FirestoreService {
           }
         }
 
-        // Second pass: attach children to their parents
         for (var parent in parentTechniques) {
           parent.subTechniques = subTechniques
               .where((sub) => sub.parentTechniqueId == parent.id)
@@ -191,7 +208,7 @@ class FirestoreService {
           name: tacticData['name'] ?? 'Unnamed Tactic',
           description: tacticData['description'] as String?,
           link: tacticData['link'] as String?,
-          techniques: parentTechniques, // Add the fully structured list
+          techniques: parentTechniques,
         ));
       }
       return finalTactics;
@@ -239,7 +256,7 @@ class FirestoreService {
     }
   }
 
-  Future<List<String>> getMitigatingProductIds(List<String> subTechniqueIds) async {
+  Future<List<String>> getRemediatingProductIds(List<String> subTechniqueIds) async {
     if (subTechniqueIds.isEmpty) return [];
 
     try {
@@ -255,7 +272,7 @@ class FirestoreService {
 
       return productIds;
     } catch (e) {
-      print("Error fetching mitigating product IDs: $e");
+      print("Error fetching remediating product IDs: $e");
       return [];
     }
   }
@@ -278,12 +295,12 @@ class FirestoreService {
 // ==========================================================================
 // Application State Management (Provider)
 // ==========================================================================
-class RiskMitigationState with ChangeNotifier {
+class RiskRemediationState with ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
 
   List<SubTechnique> _selectedSubTechniques = [];
   List<Product> _allProducts = [];
-  List<Product> _mitigatingProducts = [];
+  List<Product> _remediatingProducts = [];
   List<Tactic> _allTacticsData = [];
   String _searchQuery = "";
 
@@ -292,13 +309,13 @@ class RiskMitigationState with ChangeNotifier {
 
   List<SubTechnique> get selectedSubTechniques => _selectedSubTechniques;
   List<Product> get allProducts => _allProducts;
-  List<Product> get mitigatingProducts => _mitigatingProducts;
+  List<Product> get remediatingProducts => _remediatingProducts;
   List<Tactic> get allTacticsData => _allTacticsData;
   String get searchQuery => _searchQuery;
   bool get isLoadingProducts => _isLoadingProducts;
   bool get isLoadingTactics => _isLoadingTactics;
 
-  RiskMitigationState() {
+  RiskRemediationState() {
     _loadInitialData();
   }
 
@@ -307,7 +324,6 @@ class RiskMitigationState with ChangeNotifier {
     _isLoadingProducts = true;
     notifyListeners();
 
-    // UPDATED to call the new hierarchical data fetcher
     final results = await Future.wait([
       _firestoreService.getHierarchicalData(),
       _firestoreService.getAllProducts(),
@@ -327,13 +343,13 @@ class RiskMitigationState with ChangeNotifier {
     } else {
       _selectedSubTechniques.add(subTechnique);
     }
-    _updateMitigatingProducts();
+    _updateRemediatingProducts();
     notifyListeners();
   }
 
   void clearSelection() {
     _selectedSubTechniques.clear();
-    _updateMitigatingProducts();
+    _updateRemediatingProducts();
     notifyListeners();
   }
 
@@ -342,20 +358,20 @@ class RiskMitigationState with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _updateMitigatingProducts() async {
+  Future<void> _updateRemediatingProducts() async {
     _isLoadingProducts = true;
     notifyListeners();
 
     if (_selectedSubTechniques.isEmpty) {
-      _mitigatingProducts = [];
+      _remediatingProducts = [];
       _isLoadingProducts = false;
       notifyListeners();
       return;
     }
 
     final selectedIds = _selectedSubTechniques.map((st) => st.id).toList();
-    final productIds = await _firestoreService.getMitigatingProductIds(selectedIds);
-    _mitigatingProducts = await _firestoreService.getProductsByIds(productIds);
+    final productIds = await _firestoreService.getRemediatingProductIds(selectedIds);
+    _remediatingProducts = await _firestoreService.getProductsByIds(productIds);
 
     _isLoadingProducts = false;
     notifyListeners();
@@ -363,34 +379,89 @@ class RiskMitigationState with ChangeNotifier {
 }
 
 // ==========================================================================
-// Main Screen Widget
+// Main Screen Widget - UPDATED for Mobile View
 // ==========================================================================
-class HomeScreen extends StatelessWidget {
+
+enum MobileView { risk, remediation }
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  MobileView _currentView = MobileView.risk;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MITRE ATT&CK Risk and Mitigation Mapping'),
+        title: const Text('MITRE ATT&CK Risk and Remediation Mapping'),
         centerTitle: true,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
+          // --- Desktop View ---
           if (constraints.maxWidth > 850) {
             return const Row(
               children: [
                 Expanded(flex: 1, child: RiskPanel()),
                 VerticalDivider(width: 1),
-                Expanded(flex: 1, child: MitigationPanel()),
+                Expanded(flex: 1, child: RemediationPanel()),
               ],
             );
-          } else {
-            return const Column(
+          }
+
+          // --- Mobile View ---
+          else {
+            return Column(
               children: [
-                Expanded(flex: 1, child: RiskPanel()),
-                Divider(height: 1),
-                Expanded(flex: 1, child: MitigationPanel()),
+                Expanded(
+                  child: IndexedStack(
+                    index: _currentView.index,
+                    children: const [
+                      RiskPanel(),
+                      RemediationPanel(),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                  decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 5,
+                          offset: Offset(0, -2),
+                        )
+                      ]
+                  ),
+                  child: ToggleButtons(
+                    isSelected: [
+                      _currentView == MobileView.risk,
+                      _currentView == MobileView.remediation,
+                    ],
+                    onPressed: (int index) {
+                      setState(() {
+                        _currentView = MobileView.values[index];
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8.0),
+                    fillColor: tachtechOrange.withOpacity(0.2),
+                    selectedColor: tachtechOrange,
+                    constraints: BoxConstraints(
+                      minWidth: (constraints.maxWidth - 40) / 2, // Ensure buttons fill space
+                      minHeight: 40,
+                    ),
+                    children: const [
+                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.shield_outlined), SizedBox(width: 8), Text('Risk')]),
+                      Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.construction_outlined), SizedBox(width: 8), Text('Remediation')]),
+                    ],
+                  ),
+                ),
               ],
             );
           }
@@ -402,7 +473,7 @@ class HomeScreen extends StatelessWidget {
 
 
 // ==========================================================================
-// Left Panel: Risk (MITRE ATT&CK)
+// Left Panel: Risk
 // ==========================================================================
 class RiskPanel extends StatefulWidget {
   const RiskPanel({Key? key}) : super(key: key);
@@ -422,7 +493,7 @@ class _RiskPanelState extends State<RiskPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<RiskMitigationState>(
+    return Consumer<RiskRemediationState>(
       builder: (context, state, child) {
 
         List<Tactic> filteredTactics = [];
@@ -444,7 +515,6 @@ class _RiskPanelState extends State<RiskPanel> {
                     parentTacticId: technique.parentTacticId,
                     description: technique.description,
                     link: technique.link,
-                    // If the parent technique matches, show all its children, not just the filtered ones
                     subTechniques: technique.name.toLowerCase().contains(query) ? technique.subTechniques : filteredSubTechniques
                 ));
               }
@@ -456,7 +526,6 @@ class _RiskPanelState extends State<RiskPanel> {
                   name: tactic.name,
                   description: tactic.description,
                   link: tactic.link,
-                  // If the tactic matches, show all its children
                   techniques: tactic.name.toLowerCase().contains(query) ? tactic.techniques : filteredTechniques
               ));
             }
@@ -576,7 +645,6 @@ class TechniqueExpansionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // If a technique has no sub-techniques, treat it as a non-expandable ListTile.
     if (technique.subTechniques.isEmpty) {
       return ListTile(
         contentPadding: const EdgeInsets.only(left: 16.0, right: 16.0),
@@ -596,7 +664,6 @@ class TechniqueExpansionTile extends StatelessWidget {
       );
     }
 
-    // If it has sub-techniques, make it expandable.
     return ExpansionTile(
         key: PageStorageKey(technique.id),
         leading: IconButton(
@@ -622,10 +689,10 @@ class TechniqueExpansionTile extends StatelessWidget {
         initiallyExpanded: searchQuery.isNotEmpty,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 32.0), // Extra indent for sub-techniques
+            padding: const EdgeInsets.only(left: 32.0),
             child: Column(
               children: technique.subTechniques.map((subTechnique) {
-                final riskState = context.watch<RiskMitigationState>();
+                final riskState = context.watch<RiskRemediationState>();
                 final isSelected = riskState.selectedSubTechniques.contains(subTechnique);
                 return ListTile(
                   leading: IconButton(
@@ -642,10 +709,10 @@ class TechniqueExpansionTile extends StatelessWidget {
                   title: Text(subTechnique.name),
                   trailing: Text(subTechnique.id, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                   dense: true,
-                  tileColor: isSelected ? Colors.blue.withOpacity(0.15) : null,
+                  tileColor: isSelected ? tachtechOrange.withOpacity(0.15) : null,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   onTap: () {
-                    context.read<RiskMitigationState>().toggleSubTechnique(subTechnique);
+                    context.read<RiskRemediationState>().toggleSubTechnique(subTechnique);
                   },
                 );
               }).toList(),
@@ -656,7 +723,6 @@ class TechniqueExpansionTile extends StatelessWidget {
   }
 }
 
-// A generic helper function to show the info dialog for any item.
 void _showInfoDialog({
   required BuildContext context,
   required String name,
@@ -726,27 +792,27 @@ void _showInfoDialog({
 
 
 // ==========================================================================
-// Right Panel: Mitigation (Products)
+// Right Panel: Remediation
 // ==========================================================================
-class MitigationPanel extends StatelessWidget {
-  const MitigationPanel({Key? key}) : super(key: key);
+class RemediationPanel extends StatelessWidget {
+  const RemediationPanel({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<RiskMitigationState>(
+    return Consumer<RiskRemediationState>(
       builder: (context, state, child) {
         List<Product> productsToShow;
         String message;
 
         if (state.selectedSubTechniques.isEmpty) {
           productsToShow = state.allProducts;
-          message = 'All available products are shown below. Select a risk on the left to see specific mitigations.';
+          message = 'All available products are shown below. Select a risk on the left to see specific remediations.';
         } else {
-          productsToShow = state.mitigatingProducts;
+          productsToShow = state.remediatingProducts;
           if (!state.isLoadingProducts && productsToShow.isEmpty) {
-            message = 'No products found that mitigate the selected risks.';
+            message = 'No products found that remediate the selected risks.';
           } else {
-            message = 'Showing products that mitigate the selected risks.';
+            message = 'Showing products that remediate the selected risks.';
           }
         }
 
@@ -755,7 +821,7 @@ class MitigationPanel extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text('Mitigation', style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
+              child: Text('Remediation', style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
             ),
             const Divider(),
             Padding(
